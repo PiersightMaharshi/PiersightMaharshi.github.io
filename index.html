@@ -578,12 +578,7 @@
 
       feedback.innerHTML = '<span class="muted">Committing to GitHub…</span>';
       try {
-        await commitJsonFiles([
-          { path: 'data/packages.json', append: [pkg] },
-          { path: 'data/connectors.json', append: newConnectors },
-          { path: 'data/contacts.json', append: newContacts },
-          { path: 'data/accessories.json', append: newAccessories }
-        ], `Add package ${pkgId} via Create Package tab`);
+        await commitState(`Add package ${pkgId} via Create Package tab`);
         feedback.innerHTML = `<span class="status-pass">Committed "${pkgId}" to ${GH_BRANCH}. GitHub Pages will redeploy shortly.</span>`;
         clearCreateForm();
       } catch (err) {
@@ -600,12 +595,9 @@
     }
 
     // ---- GitHub commit helpers ----
-    function b64EncodeUtf8(str) { return btoa(unescape(encodeURIComponent(str))); }
-    function b64DecodeUtf8(str) { return decodeURIComponent(escape(atob(str))); }
-
-    async function ghFetch(path, options = {}) {
+    async function ghGit(endpoint, options = {}) {
       const token = getToken();
-      const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
+      const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}${endpoint}`, {
         ...options,
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -621,25 +613,46 @@
       return res.json();
     }
 
-    // Commit files sequentially: fetch current content, append records, PUT.
-    async function commitJsonFiles(files, message) {
-      for (const file of files) {
-        if (!file.append.length) continue;
-        const current = await ghFetch(`${file.path}?ref=${GH_BRANCH}`);
-        let arr = [];
-        try { arr = JSON.parse(b64DecodeUtf8(current.content)); } catch { arr = []; }
-        if (!Array.isArray(arr)) arr = [];
-        arr.push(...file.append);
-        await ghFetch(file.path, {
-          method: 'PUT',
-          body: JSON.stringify({
-            message,
-            content: b64EncodeUtf8(JSON.stringify(arr, null, 2)),
-            sha: current.sha,
-            branch: GH_BRANCH
-          })
-        });
-      }
+    // Write all data files from the current in-memory state as ONE atomic commit
+    // (Git Data API). One commit => one GitHub Pages rebuild, blobs uploaded in parallel.
+    async function commitState(message) {
+      const files = [
+        { path: 'data/packages.json', data: state.packages },
+        { path: 'data/connectors.json', data: state.connectors },
+        { path: 'data/contacts.json', data: state.contacts },
+        { path: 'data/accessories.json', data: state.accessories },
+        { path: 'data/tooling.json', data: state.tooling },
+        { path: 'data/test_results.json', data: state.tests }
+      ];
+
+      const ref = await ghGit(`/git/ref/heads/${GH_BRANCH}`);
+      const baseCommitSha = ref.object.sha;
+      const baseCommit = await ghGit(`/git/commits/${baseCommitSha}`);
+
+      const blobs = await Promise.all(files.map(f =>
+        ghGit('/git/blobs', {
+          method: 'POST',
+          body: JSON.stringify({ content: JSON.stringify(f.data, null, 2), encoding: 'utf-8' })
+        })
+      ));
+
+      const tree = await ghGit('/git/trees', {
+        method: 'POST',
+        body: JSON.stringify({
+          base_tree: baseCommit.tree.sha,
+          tree: files.map((f, i) => ({ path: f.path, mode: '100644', type: 'blob', sha: blobs[i].sha }))
+        })
+      });
+
+      const commit = await ghGit('/git/commits', {
+        method: 'POST',
+        body: JSON.stringify({ message, tree: tree.sha, parents: [baseCommitSha] })
+      });
+
+      await ghGit(`/git/refs/heads/${GH_BRANCH}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ sha: commit.sha })
+      });
     }
 
     // ---- Delete package ----
@@ -669,32 +682,10 @@
       }
 
       try {
-        await commitFilteredFiles(pkgId, `Remove package ${pkgId} via app`);
+        await commitState(`Remove package ${pkgId} via app`);
         alert(`Package "${pkgId}" deleted and committed to "${GH_BRANCH}". GitHub Pages will redeploy shortly.`);
       } catch (err) {
         alert(`Delete failed: ${err.message}\n\nThe package was removed locally but not committed.`);
-      }
-    }
-
-    // Rewrite each data file with the target package's records filtered out.
-    async function commitFilteredFiles(pkgId, message) {
-      const paths = ['data/packages.json', 'data/connectors.json', 'data/contacts.json', 'data/accessories.json', 'data/tooling.json', 'data/test_results.json'];
-      for (const path of paths) {
-        const current = await ghFetch(`${path}?ref=${GH_BRANCH}`);
-        let arr = [];
-        try { arr = JSON.parse(b64DecodeUtf8(current.content)); } catch { arr = []; }
-        if (!Array.isArray(arr)) continue;
-        const next = arr.filter(item => item.pkg_id !== pkgId);
-        if (next.length === arr.length) continue; // no matching records; skip commit
-        await ghFetch(path, {
-          method: 'PUT',
-          body: JSON.stringify({
-            message,
-            content: b64EncodeUtf8(JSON.stringify(next, null, 2)),
-            sha: current.sha,
-            branch: GH_BRANCH
-          })
-        });
       }
     }
 
