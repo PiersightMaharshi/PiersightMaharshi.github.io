@@ -21,16 +21,6 @@
     }
   },
   {
-    "pkg_id": "ex1",
-    "conn_id": "K1",
-    "pcb_side": {
-      "part_number": "DBM25PNMBL-FR022_C115371-0230"
-    },
-    "mating_side": {
-      "part_number": null
-    }
-  },
-  {
     "pkg_id": "pkg2",
     "conn_id": "K1",
     "pcb_side": {
