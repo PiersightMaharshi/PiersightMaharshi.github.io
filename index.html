@@ -235,13 +235,15 @@
     const state = { packages: [], connectors: [], contacts: [], tooling: [], accessories: [], tests: [] };
 
     async function loadData() {
+      // Bypass the browser/CDN cache so freshly committed data shows without a hard refresh.
+      const getJson = (path) => fetch(path, { cache: 'no-store' }).then(r => r.json());
       const [packages, connectors, contacts, tooling, accessories, tests] = await Promise.all([
-        fetch('./data/packages.json').then(r => r.json()),
-        fetch('./data/connectors.json').then(r => r.json()),
-        fetch('./data/contacts.json').then(r => r.json()),
-        fetch('./data/tooling.json').then(r => r.json()),
-        fetch('./data/accessories.json').then(r => r.json()),
-        fetch('./data/test_results.json').then(r => r.json())
+        getJson('./data/packages.json'),
+        getJson('./data/connectors.json'),
+        getJson('./data/contacts.json'),
+        getJson('./data/tooling.json'),
+        getJson('./data/accessories.json'),
+        getJson('./data/test_results.json')
       ]);
 
       state.packages = packages;
