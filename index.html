@@ -139,6 +139,7 @@
         <button data-view="planner">Build Planner</button>
         <button data-view="inventory">Inventory</button>
         <button data-view="tests">Test Log</button>
+        <button data-view="create">Create Package</button>
       </nav>
     </header>
 
@@ -185,6 +186,37 @@
     <section id="tests" class="panel hidden">
       <h2>Test Log</h2>
       <div id="testResults"></div>
+    </section>
+
+    <section id="create" class="panel hidden">
+      <h2>Create Package</h2>
+      <p class="small">Add a new package below. It appears immediately in the app, then copy the generated JSON into <code>data/packages.json</code> to save it in the repo.</p>
+      <div class="row">
+        <div>
+          <label for="createPkgId">Package ID *</label>
+          <input id="createPkgId" placeholder="Example: PKG2" />
+        </div>
+        <div>
+          <label for="createPkgName">Package name *</label>
+          <input id="createPkgName" placeholder="Example: Signal_Interface" />
+        </div>
+      </div>
+      <label for="createPkgDesc">Description</label>
+      <input id="createPkgDesc" placeholder="Short description of this package" />
+      <label for="createConnectors">Connectors (comma-separated) *</label>
+      <input id="createConnectors" placeholder="Example: K1, K2, K3" value="K1" />
+      <div class="actions" style="margin-top: 14px;">
+        <button class="primary" onclick="createPackage()">Add package</button>
+      </div>
+      <div id="createFeedback" class="small" style="margin-top: 10px;"></div>
+      <div id="createOutput" class="card hidden" style="margin-top: 16px;">
+        <h4 style="margin-top:0;">Paste this into <code>data/packages.json</code></h4>
+        <p class="small">Replace the whole file contents with the array below (it includes your existing packages).</p>
+        <pre id="createJson"></pre>
+        <div class="actions">
+          <button class="primary" onclick="copyPackagesJson()">Copy JSON</button>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -453,6 +485,53 @@
           </div>
         </div>
       `).join('');
+    }
+
+    function createPackage() {
+      const feedback = document.getElementById('createFeedback');
+      const pkgId = document.getElementById('createPkgId').value.trim();
+      const pkgName = document.getElementById('createPkgName').value.trim();
+      const description = document.getElementById('createPkgDesc').value.trim();
+      const connectors = document.getElementById('createConnectors').value
+        .split(',').map(c => c.trim()).filter(Boolean);
+
+      if (!pkgId || !pkgName || !connectors.length) {
+        feedback.innerHTML = '<span class="status-fail">Package ID, name, and at least one connector are required.</span>';
+        return;
+      }
+      if (state.packages.some(p => p.pkg_id === pkgId)) {
+        feedback.innerHTML = `<span class="status-fail">Package "${pkgId}" already exists.</span>`;
+        return;
+      }
+
+      const pkg = {
+        pkg_id: pkgId,
+        pkg_name: pkgName,
+        description: description,
+        total_k_connectors: connectors.length,
+        k_connector_list: connectors
+      };
+      state.packages.push(pkg);
+
+      renderPackages();
+      populatePlanner();
+
+      feedback.innerHTML = `<span class="status-pass">Added "${pkgId}" — visible in Overview and Build Planner.</span>`;
+      document.getElementById('createJson').textContent = JSON.stringify(state.packages, null, 2);
+      document.getElementById('createOutput').classList.remove('hidden');
+
+      document.getElementById('createPkgId').value = '';
+      document.getElementById('createPkgName').value = '';
+      document.getElementById('createPkgDesc').value = '';
+      document.getElementById('createConnectors').value = 'K1';
+    }
+
+    function copyPackagesJson() {
+      const text = document.getElementById('createJson').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const feedback = document.getElementById('createFeedback');
+        feedback.innerHTML = '<span class="status-pass">JSON copied to clipboard.</span>';
+      });
     }
 
     function selectDefaultConnector() {
