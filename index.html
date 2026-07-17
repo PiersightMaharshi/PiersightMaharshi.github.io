@@ -138,7 +138,6 @@
         <button data-view="details">Connector Details</button>
         <button data-view="planner">Build Planner</button>
         <button data-view="inventory">Inventory</button>
-        <button data-view="tests">Test Log</button>
         <button data-view="create">Create Package</button>
       </nav>
     </header>
@@ -181,11 +180,6 @@
       <label for="inventorySearch">Search by part number</label>
       <input id="inventorySearch" placeholder="Example: M39029/58-360" />
       <div id="inventoryResults" style="margin-top: 12px;"></div>
-    </section>
-
-    <section id="tests" class="panel hidden">
-      <h2>Test Log</h2>
-      <div id="testResults"></div>
     </section>
 
     <section id="create" class="panel hidden">
@@ -255,7 +249,6 @@
 
       renderPackages();
       populatePlanner();
-      renderTests();
       renderInventory();
       selectDefaultConnector();
     }
@@ -285,6 +278,7 @@
           <p><strong>Connectors:</strong> ${pkg.k_connector_list.join(', ')}</p>
           <div class="actions" style="margin-top: 10px;">
             <button class="primary" onclick="selectPackage('${pkg.pkg_id}')">Open package</button>
+            <button onclick="deletePackage('${pkg.pkg_id}')" style="background:transparent;color:var(--danger);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;">Remove</button>
           </div>
         </div>
       `).join('');
@@ -473,33 +467,6 @@
       `;
     }
 
-    function renderTests() {
-      const container = document.getElementById('testResults');
-      if (!state.tests.length) {
-        container.innerHTML = '<div class="card">No test data.</div>';
-        return;
-      }
-
-      container.innerHTML = state.tests.map(test => `
-        <div class="card" style="margin-bottom: 12px;">
-          <div class="actions">
-            <span class="pill">${test.pkg_id}-${test.conn_id}</span>
-            <span class="pill">${test.harness_id}</span>
-          </div>
-          <h3>${test.overall_result}</h3>
-          <p class="muted">Built by ${test.built_by} on ${test.test_date}</p>
-          <div class="list">
-            ${test.tests_performed.map(item => `
-              <div class="list-item">
-                <strong>${item.test_type}</strong> · ${item.result}
-                <div class="small">${item.specification}${item.measured_value ? ' · ' + item.measured_value : ''}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
-    }
-
     // ---- GitHub API config ----
     const GH_OWNER = 'PiersightMaharshi';
     const GH_REPO = 'PiersightMaharshi.github.io';
@@ -668,6 +635,62 @@
           body: JSON.stringify({
             message,
             content: b64EncodeUtf8(JSON.stringify(arr, null, 2)),
+            sha: current.sha,
+            branch: GH_BRANCH
+          })
+        });
+      }
+    }
+
+    // ---- Delete package ----
+    async function deletePackage(pkgId) {
+      const pkg = state.packages.find(p => p.pkg_id === pkgId);
+      if (!pkg) return;
+
+      const ok = confirm(`Delete package "${pkgId}"?\n\nThis permanently removes it and all of its connectors, contacts, accessories, tooling and test records from the repository. This cannot be undone.`);
+      if (!ok) return;
+      const sure = confirm(`Are you absolutely sure?\n\n"${pkgId}" will be committed as deleted to the "${GH_BRANCH}" branch.`);
+      if (!sure) return;
+
+      // Remove from in-memory state so the app updates immediately.
+      state.packages = state.packages.filter(p => p.pkg_id !== pkgId);
+      state.connectors = state.connectors.filter(c => c.pkg_id !== pkgId);
+      state.contacts = state.contacts.filter(c => c.pkg_id !== pkgId);
+      state.accessories = state.accessories.filter(a => a.pkg_id !== pkgId);
+      state.tooling = state.tooling.filter(t => t.pkg_id !== pkgId);
+      state.tests = state.tests.filter(t => t.pkg_id !== pkgId);
+      renderPackages();
+      populatePlanner();
+
+      const token = getToken();
+      if (!token) {
+        alert(`Removed "${pkgId}" locally, but NO token is saved so it was not committed — it will reappear on refresh. Save a token in the Create Package tab to persist deletions.`);
+        return;
+      }
+
+      try {
+        await commitFilteredFiles(pkgId, `Remove package ${pkgId} via app`);
+        alert(`Package "${pkgId}" deleted and committed to "${GH_BRANCH}". GitHub Pages will redeploy shortly.`);
+      } catch (err) {
+        alert(`Delete failed: ${err.message}\n\nThe package was removed locally but not committed.`);
+      }
+    }
+
+    // Rewrite each data file with the target package's records filtered out.
+    async function commitFilteredFiles(pkgId, message) {
+      const paths = ['data/packages.json', 'data/connectors.json', 'data/contacts.json', 'data/accessories.json', 'data/tooling.json', 'data/test_results.json'];
+      for (const path of paths) {
+        const current = await ghFetch(`${path}?ref=${GH_BRANCH}`);
+        let arr = [];
+        try { arr = JSON.parse(b64DecodeUtf8(current.content)); } catch { arr = []; }
+        if (!Array.isArray(arr)) continue;
+        const next = arr.filter(item => item.pkg_id !== pkgId);
+        if (next.length === arr.length) continue; // no matching records; skip commit
+        await ghFetch(path, {
+          method: 'PUT',
+          body: JSON.stringify({
+            message,
+            content: b64EncodeUtf8(JSON.stringify(next, null, 2)),
             sha: current.sha,
             branch: GH_BRANCH
           })
