@@ -228,24 +228,35 @@
   <script>
     const state = { packages: [], connectors: [], contacts: [], tooling: [], accessories: [], tests: [] };
 
-    async function loadData() {
-      // Bypass the browser/CDN cache so freshly committed data shows without a hard refresh.
-      const getJson = (path) => fetch(path, { cache: 'no-store' }).then(r => r.json());
-      const [packages, connectors, contacts, tooling, accessories, tests] = await Promise.all([
-        getJson('./data/packages.json'),
-        getJson('./data/connectors.json'),
-        getJson('./data/contacts.json'),
-        getJson('./data/tooling.json'),
-        getJson('./data/accessories.json'),
-        getJson('./data/test_results.json')
-      ]);
+    const DATA_FILES = ['packages', 'connectors', 'contacts', 'tooling', 'accessories', 'test_results'];
 
-      state.packages = packages;
-      state.connectors = connectors;
-      state.contacts = contacts;
-      state.tooling = tooling;
-      state.accessories = accessories;
-      state.tests = tests;
+    async function loadData() {
+      const names = DATA_FILES;
+      let arrays;
+      try {
+        if (getToken()) {
+          // Read straight from GitHub (always the latest commit) so the app is not tied to
+          // the local files or the GitHub Pages deploy. This is what makes localhost fast.
+          arrays = await Promise.all(names.map(n => ghReadJson(`data/${n}.json`)));
+        } else {
+          // No token (e.g. viewing the public site): read the deployed/local files.
+          const getJson = (path) => fetch(path, { cache: 'no-store' }).then(r => r.json());
+          arrays = await Promise.all(names.map(n => getJson(`./data/${n}.json`)));
+        }
+      } catch (err) {
+        console.error('Data load failed', err);
+        alert(`Could not load data from GitHub: ${err.message}\nFalling back to local files.`);
+        const getJson = (path) => fetch(path, { cache: 'no-store' }).then(r => r.json());
+        arrays = await Promise.all(names.map(n => getJson(`./data/${n}.json`)));
+      }
+
+      const [packages, connectors, contacts, tooling, accessories, tests] = arrays;
+      state.packages = packages || [];
+      state.connectors = connectors || [];
+      state.contacts = contacts || [];
+      state.tooling = tooling || [];
+      state.accessories = accessories || [];
+      state.tests = tests || [];
 
       renderPackages();
       populatePlanner();
@@ -480,6 +491,7 @@
       if (!token) { updateTokenStatus(); return; }
       localStorage.setItem(TOKEN_KEY, token);
       updateTokenStatus();
+      loadData(); // refresh straight from GitHub now that we can read via the API
     }
 
     function clearToken() {
@@ -604,6 +616,25 @@
           'Accept': 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
           ...(options.headers || {})
+        }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(`${res.status} ${body.message || res.statusText}`);
+      }
+      return res.json();
+    }
+
+    // Read a JSON file's latest committed content directly from GitHub (no CDN/deploy delay).
+    // Accept: raw returns the file body verbatim, so no base64 decode is needed.
+    async function ghReadJson(path) {
+      const token = getToken();
+      const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}?ref=${GH_BRANCH}`, {
+        cache: 'no-store',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.raw',
+          'X-GitHub-Api-Version': '2022-11-28'
         }
       });
       if (!res.ok) {
