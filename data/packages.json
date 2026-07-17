@@ -1,14 +1,1 @@
-[
-  {
-    "pkg_id": "PKG1",
-    "pkg_name": "Power_Distribution",
-    "description": "Main power distribution board for System-X",
-    "total_k_connectors": 4,
-    "k_connector_list": [
-      "K1",
-      "K2",
-      "K3",
-      "K4"
-    ]
-  }
-]
+[]
