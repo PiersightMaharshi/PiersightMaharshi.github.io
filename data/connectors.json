@@ -19,15 +19,5 @@
       "gender": "Female",
       "cable_entry": "Straight"
     }
-  },
-  {
-    "pkg_id": "pkg2",
-    "conn_id": "K1",
-    "pcb_side": {
-      "part_number": "a"
-    },
-    "mating_side": {
-      "part_number": null
-    }
   }
 ]
