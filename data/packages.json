@@ -12,15 +12,6 @@
     ]
   },
   {
-    "pkg_id": "ex1",
-    "pkg_name": "ex1",
-    "description": "",
-    "total_k_connectors": 1,
-    "k_connector_list": [
-      "K1"
-    ]
-  },
-  {
     "pkg_id": "pkg2",
     "pkg_name": "pkg2",
     "description": "",
