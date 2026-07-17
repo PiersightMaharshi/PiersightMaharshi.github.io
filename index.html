@@ -1,20 +1,473 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My GitHub Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connector Tracking System</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: #10223b;
+      --panel-2: #18324f;
+      --text: #f4f7fb;
+      --muted: #8da4bf;
+      --accent: #4fd1c5;
+      --accent-2: #5b8cff;
+      --danger: #ff6b6b;
+      --success: #2ecc71;
+      --border: rgba(255,255,255,0.12);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg), #0d1b2a);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    header {
+      background: rgba(16,34,59,0.95);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.9rem; }
+    .subtitle { color: var(--muted); margin: 0; }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    nav button {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+    nav button.active, nav button:hover { background: var(--accent-2); }
+
+    .panel {
+      background: rgba(16,34,59,0.95);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    }
+
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .card h3, .card h4 { margin-top: 0; }
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(79,209,197,0.15);
+      color: var(--accent);
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+    }
+    .muted { color: var(--muted); }
+    .list { display: grid; gap: 10px; }
+    .list-item {
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    button.primary {
+      background: var(--accent);
+      color: #022;
+      border: 0;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0e1f33;
+      color: var(--text);
+      margin-top: 6px;
+    }
+    label { display: block; margin-top: 10px; font-size: 0.95rem; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    .row > div { flex: 1; min-width: 180px; }
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 999px; background: rgba(91,140,255,0.16); color: #9cc0ff; font-size: 0.8rem; margin-right: 6px; margin-top: 6px; }
+    .status-pass { color: var(--success); font-weight: 700; }
+    .status-fail { color: var(--danger); font-weight: 700; }
+    .hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .connector-chip { display: inline-block; margin: 6px 6px 0 0; padding: 6px 10px; border-radius: 999px; background: rgba(91,140,255,0.18); cursor: pointer; }
+    .connector-chip.active { background: var(--accent-2); }
+    .small { font-size: 0.92rem; color: var(--muted); }
+    pre { white-space: pre-wrap; background: rgba(255,255,255,0.04); border: 1px solid var(--border); padding: 12px; border-radius: 12px; overflow-x: auto; }
+  </style>
 </head>
 <body>
-    <h1>Hello, World! 👋</h1>
-    <p>Welcome to my GitHub Pages site!</p>
+  <div class="wrap">
+    <header>
+      <h1>Connector Tracking System</h1>
+      <p class="subtitle">A GitHub Pages-ready static site that reads JSON data from your repository and supports build planning, inventory lookup, and test tracking.</p>
+      <nav>
+        <button data-view="overview" class="active">Overview</button>
+        <button data-view="details">Connector Details</button>
+        <button data-view="planner">Build Planner</button>
+        <button data-view="inventory">Inventory</button>
+        <button data-view="tests">Test Log</button>
+      </nav>
+    </header>
+
+    <section id="overview" class="panel">
+      <h2>Package Overview</h2>
+      <div id="packageGrid" class="grid grid-3"></div>
+    </section>
+
+    <section id="details" class="panel hidden">
+      <div class="actions">
+        <button class="primary" onclick="showView('overview')">Back to packages</button>
+      </div>
+      <h2 id="detailTitle">Connector Details</h2>
+      <div id="connectorPicker" class="list"></div>
+      <div id="detailContent" class="grid grid-2"></div>
+    </section>
+
+    <section id="planner" class="panel hidden">
+      <h2>Build Planner</h2>
+      <div class="row">
+        <div>
+          <label for="plannerPackage">Package</label>
+          <select id="plannerPackage"></select>
+        </div>
+        <div>
+          <label for="plannerQty">Quantity</label>
+          <input id="plannerQty" type="number" min="1" value="2" />
+        </div>
+      </div>
+      <div id="plannerConnectors" class="list" style="margin-top: 12px;"></div>
+      <div class="actions" style="margin-top: 12px;">
+        <button class="primary" onclick="generateBuildPlan()">Generate plan</button>
+      </div>
+      <div id="buildPlanOutput" class="card" style="margin-top: 16px;"></div>
+    </section>
+
+    <section id="inventory" class="panel hidden">
+      <h2>Inventory / Cross-reference</h2>
+      <label for="inventorySearch">Search by part number</label>
+      <input id="inventorySearch" placeholder="Example: M39029/58-360" />
+      <div id="inventoryResults" style="margin-top: 12px;"></div>
+    </section>
+
+    <section id="tests" class="panel hidden">
+      <h2>Test Log</h2>
+      <div id="testResults"></div>
+    </section>
+  </div>
+
+  <script>
+    const state = { packages: [], connectors: [], contacts: [], tooling: [], accessories: [], tests: [] };
+
+    async function loadData() {
+      const [packages, connectors, contacts, tooling, accessories, tests] = await Promise.all([
+        fetch('./data/packages.json').then(r => r.json()),
+        fetch('./data/connectors.json').then(r => r.json()),
+        fetch('./data/contacts.json').then(r => r.json()),
+        fetch('./data/tooling.json').then(r => r.json()),
+        fetch('./data/accessories.json').then(r => r.json()),
+        fetch('./data/test_results.json').then(r => r.json())
+      ]);
+
+      state.packages = packages;
+      state.connectors = connectors;
+      state.contacts = contacts;
+      state.tooling = tooling;
+      state.accessories = accessories;
+      state.tests = tests;
+
+      renderPackages();
+      populatePlanner();
+      renderTests();
+      renderInventory();
+      selectDefaultConnector();
+    }
+
+    function showView(view) {
+      document.querySelectorAll('.panel').forEach(panel => {
+        if (panel.id === view || (view === 'overview' && panel.id === 'overview') || (view === 'details' && panel.id === 'details') || (view === 'planner' && panel.id === 'planner') || (view === 'inventory' && panel.id === 'inventory') || (view === 'tests' && panel.id === 'tests')) {
+          panel.classList.remove('hidden');
+        } else if (panel.classList.contains('panel')) {
+          panel.classList.add('hidden');
+        }
+      });
+      document.querySelectorAll('nav button').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+    }
+
+    function renderPackages() {
+      const grid = document.getElementById('packageGrid');
+      if (!state.packages.length) {
+        grid.innerHTML = '<div class="card">No package data available.</div>';
+        return;
+      }
+      grid.innerHTML = state.packages.map(pkg => `
+        <div class="card">
+          <span class="pill">${pkg.pkg_id}</span>
+          <h3>${pkg.pkg_name}</h3>
+          <p class="muted">${pkg.description}</p>
+          <p><strong>Connectors:</strong> ${pkg.k_connector_list.join(', ')}</p>
+          <div class="actions" style="margin-top: 10px;">
+            <button class="primary" onclick="selectPackage('${pkg.pkg_id}')">Open package</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectPackage(pkgId) {
+      const pkg = state.packages.find(p => p.pkg_id === pkgId);
+      if (!pkg) return;
+      const firstConn = pkg.k_connector_list[0];
+      renderDetail(pkg, firstConn);
+      showView('details');
+    }
+
+    function renderDetail(pkg, connId) {
+      const title = document.getElementById('detailTitle');
+      title.textContent = `${pkg.pkg_id} · ${connId}`;
+
+      const picker = document.getElementById('connectorPicker');
+      picker.innerHTML = pkg.k_connector_list.map(id => `
+        <span class="connector-chip ${id === connId ? 'active' : ''}" onclick="renderDetail(${JSON.stringify(pkg)}, '${id}')">${id}</span>
+      `).join('');
+
+      const connector = state.connectors.find(c => c.pkg_id === pkg.pkg_id && c.conn_id === connId);
+      const contact = state.contacts.find(c => c.pkg_id === pkg.pkg_id && c.conn_id === connId);
+      const tooling = state.tooling.find(t => t.pkg_id === pkg.pkg_id && t.conn_id === connId);
+      const accessories = state.accessories.find(a => a.pkg_id === pkg.pkg_id && a.conn_id === connId);
+      const tests = state.tests.filter(t => t.pkg_id === pkg.pkg_id && t.conn_id === connId);
+
+      const content = document.getElementById('detailContent');
+      content.innerHTML = `
+        <div class="card">
+          <h3>Connector Overview</h3>
+          <p><strong>Package:</strong> ${pkg.pkg_id} · ${pkg.pkg_name}</p>
+          <p><strong>PCB Side:</strong> ${connector?.pcb_side?.part_number || 'N/A'} (${connector?.pcb_side?.manufacturer || 'N/A'})</p>
+          <p><strong>Mating Side:</strong> ${connector?.mating_side?.part_number || 'N/A'} (${connector?.mating_side?.manufacturer || 'N/A'})</p>
+          <p><strong>Positions:</strong> ${connector?.pcb_side?.positions || 'N/A'}</p>
+          <p><strong>Gender:</strong> ${connector?.pcb_side?.gender || 'N/A'}</p>
+        </div>
+        <div class="card">
+          <h3>Contacts</h3>
+          <p><strong>Primary:</strong> ${contact?.primary?.part_number || 'N/A'} · ${contact?.primary?.manufacturer || 'N/A'}</p>
+          <p><strong>Alternate:</strong> ${contact?.alternate?.part_number || 'N/A'} · ${contact?.alternate?.manufacturer || 'N/A'}</p>
+          <p><strong>Wire Range:</strong> ${contact?.primary?.wire_size_range || 'N/A'}</p>
+          <p><strong>Qty per connector:</strong> ${contact?.primary?.qty_per_connector || 'N/A'}</p>
+        </div>
+        <div class="card">
+          <h3>Tooling</h3>
+          <p><strong>Crimp Tool:</strong> ${tooling?.crimp_tool?.part_number || 'N/A'}</p>
+          <p><strong>Die:</strong> ${tooling?.crimp_die?.part_number || 'N/A'}</p>
+          <p><strong>Positioner:</strong> ${tooling?.positioner?.part_number || 'N/A'}</p>
+          <p><strong>Insertion/Extraction:</strong> ${tooling?.insertion_tool?.part_number || 'N/A'} / ${tooling?.extraction_tool?.part_number || 'N/A'}</p>
+        </div>
+        <div class="card">
+          <h3>Accessories</h3>
+          <p><strong>Backshell:</strong> ${accessories?.backshell?.part_number || 'N/A'}</p>
+          <p><strong>Strain Relief:</strong> ${accessories?.strain_relief?.part_number || 'N/A'}</p>
+          <p><strong>Heat Shrink:</strong> ${accessories?.heat_shrink?.part_number || 'N/A'}</p>
+          <p><strong>Dust Cap:</strong> ${accessories?.dust_cap?.part_number || 'N/A'}</p>
+        </div>
+        <div class="card" style="grid-column: 1 / -1;">
+          <h3>Recent Test Results</h3>
+          ${tests.length ? tests.map(test => `
+            <div class="list-item">
+              <strong>${test.harness_id}</strong>
+              <div class="small">${test.test_date} · ${test.built_by}</div>
+              <div class="status-pass">${test.overall_result}</div>
+              <div class="small">${test.tests_performed.map(t => `${t.test_type}: ${t.result}`).join(' · ')}</div>
+            </div>
+          `).join('') : '<p class="muted">No test data available.</p>'}
+        </div>
+      `;
+    }
+
+    function populatePlanner() {
+      const select = document.getElementById('plannerPackage');
+      select.innerHTML = state.packages.map(pkg => `<option value="${pkg.pkg_id}">${pkg.pkg_id} · ${pkg.pkg_name}</option>`).join('');
+      renderPlannerConnectors(select.value);
+    }
+
+    function renderPlannerConnectors(pkgId) {
+      const pkg = state.packages.find(p => p.pkg_id === pkgId);
+      const container = document.getElementById('plannerConnectors');
+      if (!pkg) return;
+      container.innerHTML = pkg.k_connector_list.map(connId => `
+        <label class="list-item">
+          <input type="checkbox" checked value="${connId}" /> ${pkg.pkg_id}-${connId}
+        </label>
+      `).join('');
+    }
+
+    function generateBuildPlan() {
+      const pkgId = document.getElementById('plannerPackage').value;
+      const qty = Number(document.getElementById('plannerQty').value || 1);
+      const selectedConnectors = Array.from(document.querySelectorAll('#plannerConnectors input:checked')).map(i => i.value);
+      const pkg = state.packages.find(p => p.pkg_id === pkgId);
+      if (!pkg) return;
+
+      let lines = [`<h3>Build plan: ${pkgId} × ${qty} units</h3>`];
+      const orderMap = new Map();
+
+      selectedConnectors.forEach(connId => {
+        const connector = state.connectors.find(c => c.pkg_id === pkgId && c.conn_id === connId);
+        const contact = state.contacts.find(c => c.pkg_id === pkgId && c.conn_id === connId);
+        const accessories = state.accessories.find(a => a.pkg_id === pkgId && a.conn_id === connId);
+        const tooling = state.tooling.find(t => t.pkg_id === pkgId && t.conn_id === connId);
+        const positions = connector?.pcb_side?.positions || 0;
+        const contactQty = Math.ceil((contact?.primary?.qty_per_connector || 0) * qty * 1.1);
+        const heatShrink = ((accessories?.heat_shrink?.length_per_connector_meters || 0) * qty).toFixed(1);
+
+        lines.push(`<div class="list-item"><strong>${pkgId}-${connId}</strong><br />` +
+          `PCB: ${connector?.pcb_side?.part_number || 'N/A'} × ${qty}<br />` +
+          `Mating: ${connector?.mating_side?.part_number || 'N/A'} × ${qty}<br />` +
+          `Contacts: ${contact?.primary?.part_number || 'N/A'} × ${contactQty}<br />` +
+          `Backshell: ${accessories?.backshell?.part_number || 'N/A'} × ${qty}<br />` +
+          `Heat shrink: ${heatShrink} m</div>`);
+
+        addOrder(orderMap, connector?.pcb_side?.part_number, qty, 'PCB connector');
+        addOrder(orderMap, connector?.mating_side?.part_number, qty, 'Mating connector');
+        addOrder(orderMap, contact?.primary?.part_number, contactQty, 'Contact');
+        addOrder(orderMap, accessories?.backshell?.part_number, qty, 'Backshell');
+        addOrder(orderMap, accessories?.heat_shrink?.part_number, Number(heatShrink), 'Heat shrink (m)');
+        addOrder(orderMap, tooling?.crimp_tool?.part_number, 1, 'Crimp tool');
+      });
+
+      lines.push('<h4>Consolidated order list</h4><table><thead><tr><th>Part</th><th>Qty</th><th>Category</th></tr></thead><tbody>');
+      orderMap.forEach((item, part) => lines.push(`<tr><td>${part}</td><td>${item.qty}</td><td>${item.category}</td></tr>`));
+      lines.push('</tbody></table>');
+      document.getElementById('buildPlanOutput').innerHTML = lines.join('');
+    }
+
+    function addOrder(map, part, qty, category) {
+      if (!part) return;
+      if (!map.has(part)) map.set(part, { qty: 0, category });
+      const entry = map.get(part);
+      entry.qty += qty;
+      entry.category = entry.category || category;
+    }
+
+    function renderInventory() {
+      const search = document.getElementById('inventorySearch');
+      search.addEventListener('input', () => renderInventory());
+
+      const query = search.value.trim().toLowerCase();
+      const results = [];
+      const addResult = (part, description, packageId, connId, qty) => {
+        if (!part || (query && !part.toLowerCase().includes(query) && !description.toLowerCase().includes(query))) return;
+        results.push({ part, description, packageId, connId, qty });
+      };
+
+      state.connectors.forEach(item => {
+        addResult(item.pcb_side?.part_number, 'PCB connector', item.pkg_id, item.conn_id, 1);
+        addResult(item.mating_side?.part_number, 'Mating connector', item.pkg_id, item.conn_id, 1);
+      });
+      state.contacts.forEach(item => {
+        addResult(item.primary?.part_number, 'Primary contact', item.pkg_id, item.conn_id, item.primary?.qty_per_connector || 0);
+        addResult(item.alternate?.part_number, 'Alternate contact', item.pkg_id, item.conn_id, item.alternate?.qty_per_connector || 0);
+      });
+      state.tooling.forEach(item => {
+        addResult(item.crimp_tool?.part_number, 'Crimp tool', item.pkg_id, item.conn_id, 1);
+      });
+      state.accessories.forEach(item => {
+        addResult(item.backshell?.part_number, 'Backshell', item.pkg_id, item.conn_id, 1);
+        addResult(item.heat_shrink?.part_number, 'Heat shrink', item.pkg_id, item.conn_id, 1);
+      });
+
+      const container = document.getElementById('inventoryResults');
+      if (!results.length) {
+        container.innerHTML = '<div class="card">No matching parts.</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>Part</th><th>Used in</th><th>Qty / connector</th><th>Type</th></tr></thead>
+          <tbody>
+            ${results.map(row => `
+              <tr>
+                <td>${row.part}</td>
+                <td>${row.packageId}-${row.connId}</td>
+                <td>${row.qty}</td>
+                <td>${row.description}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderTests() {
+      const container = document.getElementById('testResults');
+      if (!state.tests.length) {
+        container.innerHTML = '<div class="card">No test data.</div>';
+        return;
+      }
+
+      container.innerHTML = state.tests.map(test => `
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="actions">
+            <span class="pill">${test.pkg_id}-${test.conn_id}</span>
+            <span class="pill">${test.harness_id}</span>
+          </div>
+          <h3>${test.overall_result}</h3>
+          <p class="muted">Built by ${test.built_by} on ${test.test_date}</p>
+          <div class="list">
+            ${test.tests_performed.map(item => `
+              <div class="list-item">
+                <strong>${item.test_type}</strong> · ${item.result}
+                <div class="small">${item.specification}${item.measured_value ? ' · ' + item.measured_value : ''}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectDefaultConnector() {
+      const firstPackage = state.packages[0];
+      if (!firstPackage) return;
+      renderDetail(firstPackage, firstPackage.k_connector_list[0]);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('nav button').forEach(btn => {
+        btn.addEventListener('click', () => showView(btn.dataset.view));
+      });
+      document.getElementById('plannerPackage').addEventListener('change', (e) => renderPlannerConnectors(e.target.value));
+      loadData();
+    });
+  </script>
 </body>
 </html>

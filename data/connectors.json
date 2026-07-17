@@ -1,0 +1,23 @@
+[
+  {
+    "pkg_id": "PKG1",
+    "conn_id": "K1",
+    "pcb_side": {
+      "part_number": "DCMC-25-3-M-1",
+      "manufacturer": "ITT Cannon",
+      "type": "D-Sub Standard",
+      "positions": 25,
+      "gender": "Male",
+      "mount_type": "Through-Hole",
+      "pcb_footprint": "DB25M-TH",
+      "orientation": "Right Angle"
+    },
+    "mating_side": {
+      "part_number": "DCMA-25-3-F-1",
+      "manufacturer": "ITT Cannon",
+      "description": "25-pin Dsub Female Cable Connector",
+      "gender": "Female",
+      "cable_entry": "Straight"
+    }
+  }
+]
