@@ -194,7 +194,7 @@
 
       <div class="card" style="margin-bottom: 16px;">
         <h4 style="margin-top:0;">GitHub access</h4>
-        <p class="small">Paste a fine-grained personal access token with <strong>Contents: Read and write</strong> on this repo. It is stored only in this browser session (<code>sessionStorage</code>) and never committed.</p>
+        <p class="small">Paste a fine-grained personal access token with <strong>Repository access: this repo</strong> and <strong>Contents: Read and write</strong>. Saved on this device (<code>localStorage</code>) so you only enter it once; it is never committed. Use <em>Clear</em> on shared machines.</p>
         <label for="ghToken">Personal access token</label>
         <input id="ghToken" type="password" placeholder="github_pat_..." autocomplete="off" />
         <div class="actions" style="margin-top: 10px;">
@@ -504,24 +504,31 @@
     const GH_BRANCH = 'main';
     const TOKEN_KEY = 'cts_gh_token';
 
+    function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
     function saveToken() {
       const token = document.getElementById('ghToken').value.trim();
       if (!token) { updateTokenStatus(); return; }
-      sessionStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(TOKEN_KEY, token);
       updateTokenStatus();
     }
 
     function clearToken() {
-      sessionStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_KEY);
       document.getElementById('ghToken').value = '';
       updateTokenStatus();
     }
 
     function updateTokenStatus() {
       const status = document.getElementById('tokenStatus');
-      status.innerHTML = sessionStorage.getItem(TOKEN_KEY)
-        ? '<span class="status-pass">Token saved for this session.</span>'
-        : '<span class="muted">No token saved — will fall back to copy-paste.</span>';
+      const token = getToken();
+      if (token) {
+        // Prefill so the user can see it's remembered and doesn't retype it.
+        document.getElementById('ghToken').value = token;
+        status.innerHTML = '<span class="status-pass">Token saved on this device.</span>';
+      } else {
+        status.innerHTML = '<span class="muted">No token saved — nothing will be committed.</span>';
+      }
     }
 
     // ---- Connector row UI ----
@@ -594,7 +601,7 @@
       renderPackages();
       populatePlanner();
 
-      const token = sessionStorage.getItem(TOKEN_KEY);
+      const token = getToken();
       if (!token) {
         feedback.innerHTML = '<span class="status-pass">Added locally.</span> <span class="status-fail">No token saved — not committed. Save a token above to persist.</span>';
         return;
@@ -628,7 +635,7 @@
     function b64DecodeUtf8(str) { return decodeURIComponent(escape(atob(str))); }
 
     async function ghFetch(path, options = {}) {
-      const token = sessionStorage.getItem(TOKEN_KEY);
+      const token = getToken();
       const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`, {
         ...options,
         headers: {
