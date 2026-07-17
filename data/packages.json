@@ -10,14 +10,5 @@
       "K3",
       "K4"
     ]
-  },
-  {
-    "pkg_id": "pkg2",
-    "pkg_name": "pkg2",
-    "description": "",
-    "total_k_connectors": 1,
-    "k_connector_list": [
-      "K1"
-    ]
   }
 ]
