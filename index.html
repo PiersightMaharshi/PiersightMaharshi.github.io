@@ -126,6 +126,11 @@
     .connector-chip.active { background: var(--accent-2); }
     .small { font-size: 0.92rem; color: var(--muted); }
     pre { white-space: pre-wrap; background: rgba(255,255,255,0.04); border: 1px solid var(--border); padding: 12px; border-radius: 12px; overflow-x: auto; }
+    .conn-row { border: 1px solid var(--border); }
+    .conn-group { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .conn-group > .glabel { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin-bottom: 4px; }
+    .conn-row label { font-size: 0.85rem; }
+    .conn-row input { margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -183,8 +188,8 @@
     </section>
 
     <section id="create" class="panel hidden">
-      <h2>Create Package</h2>
-      <p class="small">Fill in the package and its connectors. On save, the new data appears immediately in the app and is committed to the repo via the GitHub API.</p>
+      <h2 id="createTitle">Create Package</h2>
+      <p class="small">Fill in the package and its connectors. On save, the data appears immediately in the app and is committed to the repo via the GitHub API.</p>
 
       <div class="card" style="margin-bottom: 16px;">
         <h4 style="margin-top:0;">GitHub access</h4>
@@ -212,14 +217,15 @@
       <input id="createPkgDesc" placeholder="Short description of this package" />
 
       <h3 style="margin-bottom: 4px;">Connectors</h3>
-      <p class="small" style="margin-top:0;">Each connector: ID, PCB connector part number, mating part number, crimp contact part number, plus optional accessories.</p>
+      <p class="small" style="margin-top:0;">Add a card per connector with its full connector, contact, tooling and accessory details. Only Connector ID and PCB part number are required; leave the rest blank if unknown.</p>
       <div id="createConnectorRows" class="list"></div>
       <div class="actions" style="margin-top: 10px;">
         <button onclick="addConnectorRow()" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;">+ Add connector</button>
       </div>
 
       <div class="actions" style="margin-top: 16px;">
-        <button class="primary" onclick="createPackage()">Add package &amp; commit</button>
+        <button id="createSubmitBtn" class="primary" onclick="createPackage()">Add package &amp; commit</button>
+        <button id="createCancelBtn" class="hidden" onclick="resetCreateForm()" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;">Cancel edit</button>
       </div>
       <div id="createFeedback" class="small" style="margin-top: 10px;"></div>
     </section>
@@ -289,6 +295,7 @@
           <p><strong>Connectors:</strong> ${pkg.k_connector_list.join(', ')}</p>
           <div class="actions" style="margin-top: 10px;">
             <button class="primary" onclick="selectPackage('${pkg.pkg_id}')">Open package</button>
+            <button onclick="editPackage('${pkg.pkg_id}')" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;">Edit</button>
             <button onclick="deletePackage('${pkg.pkg_id}')" style="background:transparent;color:var(--danger);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;">Remove</button>
           </div>
         </div>
@@ -513,97 +520,216 @@
     }
 
     // ---- Connector row UI ----
-    function addConnectorRow(values = {}) {
+    let editingPkgId = null;
+    const esc = (v) => (v === null || v === undefined ? '' : String(v)).replace(/"/g, '&quot;');
+    const field = (label, cls, ph, val) => `<div><label>${label}</label><input class="${cls}" placeholder="${ph}" value="${esc(val)}" /></div>`;
+
+    function addConnectorRow(v = {}) {
       const container = document.getElementById('createConnectorRows');
       const row = document.createElement('div');
       row.className = 'list-item conn-row';
       row.innerHTML = `
         <div class="row">
-          <div><label>Connector ID *</label><input class="c-id" placeholder="K1" value="${values.conn_id || ''}" /></div>
-          <div><label>PCB connector PN *</label><input class="c-pcb" placeholder="DCMC-25-3-M-1" value="${values.pcb || ''}" /></div>
-          <div><label>Mating PN</label><input class="c-mating" placeholder="DCMA-25-3-F-1" value="${values.mating || ''}" /></div>
+          ${field('Connector ID *', 'c-id', 'K1', v.conn_id)}
+          ${field('PCB connector PN *', 'c-pcb-pn', 'DCMC-25-3-M-1', v.pcb_pn)}
+          ${field('PCB manufacturer', 'c-pcb-mfr', 'ITT Cannon', v.pcb_mfr)}
         </div>
-        <div class="row" style="margin-top:8px;">
-          <div><label>Crimp contact PN</label><input class="c-crimp" placeholder="M39029/58-360" value="${values.crimp || ''}" /></div>
-          <div><label>Backshell PN</label><input class="c-backshell" placeholder="DCMA-BS-25-AL" value="${values.backshell || ''}" /></div>
-          <div><label>Heat shrink PN</label><input class="c-heatshrink" placeholder="HS-25-BLK" value="${values.heatshrink || ''}" /></div>
+        <div class="conn-group">
+          <div class="glabel">Connector overview</div>
+          <div class="row">
+            ${field('Positions', 'c-pcb-pos', '25', v.pcb_pos)}
+            ${field('Gender', 'c-pcb-gender', 'Male', v.pcb_gender)}
+            ${field('Mating PN', 'c-mating-pn', 'DCMA-25-3-F-1', v.mating_pn)}
+            ${field('Mating manufacturer', 'c-mating-mfr', 'ITT Cannon', v.mating_mfr)}
+          </div>
         </div>
-        <div class="actions" style="margin-top:8px;">
-          <button onclick="this.closest('.conn-row').remove()" style="background:transparent;color:var(--danger);border:1px solid var(--border);border-radius:10px;padding:6px 10px;cursor:pointer;">Remove</button>
+        <div class="conn-group">
+          <div class="glabel">Contacts</div>
+          <div class="row">
+            ${field('Primary PN', 'c-prim-pn', 'M39029/58-360', v.prim_pn)}
+            ${field('Primary manufacturer', 'c-prim-mfr', 'Amphenol', v.prim_mfr)}
+            ${field('Wire size range', 'c-prim-wire', '20-24 AWG', v.prim_wire)}
+            ${field('Qty per connector', 'c-prim-qty', '25', v.prim_qty)}
+          </div>
+          <div class="row" style="margin-top:8px;">
+            ${field('Alternate PN', 'c-alt-pn', '205090-1', v.alt_pn)}
+            ${field('Alternate manufacturer', 'c-alt-mfr', 'TE Connectivity', v.alt_mfr)}
+          </div>
+        </div>
+        <div class="conn-group">
+          <div class="glabel">Tooling</div>
+          <div class="row">
+            ${field('Crimp tool', 'c-crimp-tool', 'M22520/2-01', v.crimp_tool)}
+            ${field('Crimp die', 'c-crimp-die', 'M22520/2-08', v.crimp_die)}
+            ${field('Positioner', 'c-positioner', 'TH-181', v.positioner)}
+          </div>
+          <div class="row" style="margin-top:8px;">
+            ${field('Insertion tool', 'c-insertion', 'DAK-95-20', v.insertion)}
+            ${field('Extraction tool', 'c-extraction', 'DRK-95-20', v.extraction)}
+          </div>
+        </div>
+        <div class="conn-group">
+          <div class="glabel">Accessories</div>
+          <div class="row">
+            ${field('Backshell', 'c-backshell', 'DCMA-BS-25-AL', v.backshell)}
+            ${field('Strain relief', 'c-strain', 'SR-25-10MM', v.strain)}
+            ${field('Heat shrink', 'c-heatshrink', 'HS-12MM', v.heatshrink)}
+            ${field('Dust cap', 'c-dustcap', 'DC-DSUB-25', v.dustcap)}
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button onclick="this.closest('.conn-row').remove()" style="background:transparent;color:var(--danger);border:1px solid var(--border);border-radius:10px;padding:6px 10px;cursor:pointer;">Remove connector</button>
         </div>
       `;
       container.appendChild(row);
     }
 
     function readConnectorRows() {
+      const get = (row, cls) => row.querySelector('.' + cls).value.trim();
       return Array.from(document.querySelectorAll('#createConnectorRows .conn-row')).map(row => ({
-        conn_id: row.querySelector('.c-id').value.trim(),
-        pcb: row.querySelector('.c-pcb').value.trim(),
-        mating: row.querySelector('.c-mating').value.trim(),
-        crimp: row.querySelector('.c-crimp').value.trim(),
-        backshell: row.querySelector('.c-backshell').value.trim(),
-        heatshrink: row.querySelector('.c-heatshrink').value.trim()
+        conn_id: get(row, 'c-id'),
+        pcb_pn: get(row, 'c-pcb-pn'), pcb_mfr: get(row, 'c-pcb-mfr'), pcb_pos: get(row, 'c-pcb-pos'), pcb_gender: get(row, 'c-pcb-gender'),
+        mating_pn: get(row, 'c-mating-pn'), mating_mfr: get(row, 'c-mating-mfr'),
+        prim_pn: get(row, 'c-prim-pn'), prim_mfr: get(row, 'c-prim-mfr'), prim_wire: get(row, 'c-prim-wire'), prim_qty: get(row, 'c-prim-qty'),
+        alt_pn: get(row, 'c-alt-pn'), alt_mfr: get(row, 'c-alt-mfr'),
+        crimp_tool: get(row, 'c-crimp-tool'), crimp_die: get(row, 'c-crimp-die'), positioner: get(row, 'c-positioner'),
+        insertion: get(row, 'c-insertion'), extraction: get(row, 'c-extraction'),
+        backshell: get(row, 'c-backshell'), strain: get(row, 'c-strain'), heatshrink: get(row, 'c-heatshrink'), dustcap: get(row, 'c-dustcap')
       }));
     }
 
-    // ---- Create + commit ----
+    // ---- Create / edit + commit ----
     async function createPackage() {
       const feedback = document.getElementById('createFeedback');
       const pkgId = document.getElementById('createPkgId').value.trim();
       const pkgName = document.getElementById('createPkgName').value.trim();
       const description = document.getElementById('createPkgDesc').value.trim();
       const rows = readConnectorRows().filter(r => r.conn_id);
+      const isEdit = editingPkgId !== null;
 
       if (!pkgId || !pkgName || !rows.length) {
         feedback.innerHTML = '<span class="status-fail">Package ID, name, and at least one connector (with an ID and PCB PN) are required.</span>';
         return;
       }
-      if (rows.some(r => !r.pcb)) {
+      if (rows.some(r => !r.pcb_pn)) {
         feedback.innerHTML = '<span class="status-fail">Every connector needs a PCB connector part number.</span>';
         return;
       }
-      if (state.packages.some(p => p.pkg_id === pkgId)) {
-        feedback.innerHTML = `<span class="status-fail">Package "${pkgId}" already exists.</span>`;
+      if (!isEdit && state.packages.some(p => p.pkg_id === pkgId)) {
+        feedback.innerHTML = `<span class="status-fail">Package "${pkgId}" already exists. Use Edit on its card to change it.</span>`;
         return;
       }
 
-      // Build records for each data file.
+      const val = (s) => (s ? s : null);
+      const num = (s) => (s === '' ? null : Number(s));
+      const has = (...xs) => xs.some(x => x);
+
       const connList = rows.map(r => r.conn_id);
       const pkg = { pkg_id: pkgId, pkg_name: pkgName, description, total_k_connectors: connList.length, k_connector_list: connList };
-      const newConnectors = rows.map(r => ({ pkg_id: pkgId, conn_id: r.conn_id, pcb_side: { part_number: r.pcb }, mating_side: { part_number: r.mating || null } }));
-      const newContacts = rows.filter(r => r.crimp).map(r => ({ pkg_id: pkgId, conn_id: r.conn_id, primary: { part_number: r.crimp } }));
-      const newAccessories = rows.filter(r => r.backshell || r.heatshrink).map(r => ({ pkg_id: pkgId, conn_id: r.conn_id, backshell: { part_number: r.backshell || null }, heat_shrink: { part_number: r.heatshrink || null } }));
+      const newConnectors = rows.map(r => ({
+        pkg_id: pkgId, conn_id: r.conn_id,
+        pcb_side: { part_number: r.pcb_pn, manufacturer: val(r.pcb_mfr), positions: num(r.pcb_pos), gender: val(r.pcb_gender) },
+        mating_side: { part_number: val(r.mating_pn), manufacturer: val(r.mating_mfr) }
+      }));
+      const newContacts = rows.filter(r => has(r.prim_pn, r.prim_mfr, r.prim_wire, r.prim_qty, r.alt_pn, r.alt_mfr)).map(r => ({
+        pkg_id: pkgId, conn_id: r.conn_id,
+        primary: { part_number: val(r.prim_pn), manufacturer: val(r.prim_mfr), wire_size_range: val(r.prim_wire), qty_per_connector: num(r.prim_qty) },
+        alternate: { part_number: val(r.alt_pn), manufacturer: val(r.alt_mfr) }
+      }));
+      const newTooling = rows.filter(r => has(r.crimp_tool, r.crimp_die, r.positioner, r.insertion, r.extraction)).map(r => ({
+        pkg_id: pkgId, conn_id: r.conn_id,
+        crimp_tool: { part_number: val(r.crimp_tool) }, crimp_die: { part_number: val(r.crimp_die) },
+        positioner: { part_number: val(r.positioner) }, insertion_tool: { part_number: val(r.insertion) }, extraction_tool: { part_number: val(r.extraction) }
+      }));
+      const newAccessories = rows.filter(r => has(r.backshell, r.strain, r.heatshrink, r.dustcap)).map(r => ({
+        pkg_id: pkgId, conn_id: r.conn_id,
+        backshell: { part_number: val(r.backshell) }, strain_relief: { part_number: val(r.strain) },
+        heat_shrink: { part_number: val(r.heatshrink) }, dust_cap: { part_number: val(r.dustcap) }
+      }));
 
-      // Update in-memory state so the app reflects it immediately.
+      // When editing, drop the package's old records first so we replace, not duplicate.
+      if (isEdit) {
+        state.packages = state.packages.filter(p => p.pkg_id !== editingPkgId);
+        state.connectors = state.connectors.filter(c => c.pkg_id !== editingPkgId);
+        state.contacts = state.contacts.filter(c => c.pkg_id !== editingPkgId);
+        state.tooling = state.tooling.filter(t => t.pkg_id !== editingPkgId);
+        state.accessories = state.accessories.filter(a => a.pkg_id !== editingPkgId);
+      }
+
       state.packages.push(pkg);
       state.connectors.push(...newConnectors);
       state.contacts.push(...newContacts);
+      state.tooling.push(...newTooling);
       state.accessories.push(...newAccessories);
       renderPackages();
       populatePlanner();
 
       const token = getToken();
       if (!token) {
-        feedback.innerHTML = '<span class="status-pass">Added locally.</span> <span class="status-fail">No token saved — not committed. Save a token above to persist.</span>';
+        feedback.innerHTML = `<span class="status-pass">${isEdit ? 'Updated' : 'Added'} locally.</span> <span class="status-fail">No token saved — not committed. Save a token above to persist.</span>`;
         return;
       }
 
       feedback.innerHTML = '<span class="muted">Committing to GitHub…</span>';
       try {
-        await commitState(`Add package ${pkgId} via Create Package tab`);
-        feedback.innerHTML = `<span class="status-pass">Committed "${pkgId}" to ${GH_BRANCH}. GitHub Pages will redeploy shortly.</span>`;
-        clearCreateForm();
+        await commitState(`${isEdit ? 'Update' : 'Add'} package ${pkgId} via Create Package tab`);
+        feedback.innerHTML = `<span class="status-pass">${isEdit ? 'Updated' : 'Committed'} "${pkgId}" to ${GH_BRANCH}.</span>`;
+        resetCreateForm();
       } catch (err) {
-        feedback.innerHTML = `<span class="status-fail">Commit failed: ${err.message}</span> <span class="muted">The package is still added locally.</span>`;
+        feedback.innerHTML = `<span class="status-fail">Commit failed: ${err.message}</span> <span class="muted">The package is still ${isEdit ? 'updated' : 'added'} locally.</span>`;
       }
     }
 
-    function clearCreateForm() {
+    // ---- Edit ----
+    function editPackage(pkgId) {
+      const pkg = state.packages.find(p => p.pkg_id === pkgId);
+      if (!pkg) return;
+
+      document.getElementById('createPkgId').value = pkg.pkg_id;
+      document.getElementById('createPkgId').readOnly = true;
+      document.getElementById('createPkgName').value = pkg.pkg_name || '';
+      document.getElementById('createPkgDesc').value = pkg.description || '';
+
+      const rows = document.getElementById('createConnectorRows');
+      rows.innerHTML = '';
+      const connIds = pkg.k_connector_list && pkg.k_connector_list.length ? pkg.k_connector_list : [''];
+      connIds.forEach(connId => {
+        const conn = state.connectors.find(c => c.pkg_id === pkgId && c.conn_id === connId) || {};
+        const cont = state.contacts.find(c => c.pkg_id === pkgId && c.conn_id === connId) || {};
+        const tool = state.tooling.find(t => t.pkg_id === pkgId && t.conn_id === connId) || {};
+        const acc = state.accessories.find(a => a.pkg_id === pkgId && a.conn_id === connId) || {};
+        addConnectorRow({
+          conn_id: connId,
+          pcb_pn: conn.pcb_side?.part_number, pcb_mfr: conn.pcb_side?.manufacturer, pcb_pos: conn.pcb_side?.positions, pcb_gender: conn.pcb_side?.gender,
+          mating_pn: conn.mating_side?.part_number, mating_mfr: conn.mating_side?.manufacturer,
+          prim_pn: cont.primary?.part_number, prim_mfr: cont.primary?.manufacturer, prim_wire: cont.primary?.wire_size_range, prim_qty: cont.primary?.qty_per_connector,
+          alt_pn: cont.alternate?.part_number, alt_mfr: cont.alternate?.manufacturer,
+          crimp_tool: tool.crimp_tool?.part_number, crimp_die: tool.crimp_die?.part_number, positioner: tool.positioner?.part_number,
+          insertion: tool.insertion_tool?.part_number, extraction: tool.extraction_tool?.part_number,
+          backshell: acc.backshell?.part_number, strain: acc.strain_relief?.part_number, heatshrink: acc.heat_shrink?.part_number, dustcap: acc.dust_cap?.part_number
+        });
+      });
+
+      editingPkgId = pkgId;
+      document.getElementById('createTitle').textContent = `Edit Package · ${pkgId}`;
+      document.getElementById('createSubmitBtn').textContent = 'Update package & commit';
+      document.getElementById('createCancelBtn').classList.remove('hidden');
+      document.getElementById('createFeedback').innerHTML = '';
+      showView('create');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetCreateForm() {
+      editingPkgId = null;
       document.getElementById('createPkgId').value = '';
+      document.getElementById('createPkgId').readOnly = false;
       document.getElementById('createPkgName').value = '';
       document.getElementById('createPkgDesc').value = '';
       document.getElementById('createConnectorRows').innerHTML = '';
       addConnectorRow();
+      document.getElementById('createTitle').textContent = 'Create Package';
+      document.getElementById('createSubmitBtn').textContent = 'Add package & commit';
+      document.getElementById('createCancelBtn').classList.add('hidden');
     }
 
     // ---- GitHub commit helpers ----
