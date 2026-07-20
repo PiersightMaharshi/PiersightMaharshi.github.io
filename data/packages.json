@@ -7,5 +7,14 @@
     "k_connector_list": [
       "WC_1"
     ]
+  },
+  {
+    "pkg_id": "P_EPC",
+    "pkg_name": "PAYLOAD EPC",
+    "description": "PAYLOAD EPC M & R",
+    "total_k_connectors": 1,
+    "k_connector_list": [
+      "K1"
+    ]
   }
 ]

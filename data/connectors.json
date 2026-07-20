@@ -8,5 +8,19 @@
     "mating_side": {
       "part_number": "SMA M"
     }
+  },
+  {
+    "pkg_id": "P_EPC",
+    "conn_id": "K1",
+    "pcb_side": {
+      "part_number": "DEM9PNMBL-FR022_C115371-0226",
+      "manufacturer": null,
+      "positions": 9,
+      "gender": "Plug"
+    },
+    "mating_side": {
+      "part_number": null,
+      "manufacturer": null
+    }
   }
 ]
