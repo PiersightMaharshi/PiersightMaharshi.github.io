@@ -12,9 +12,10 @@
     "pkg_id": "P_EPC",
     "pkg_name": "PAYLOAD EPC",
     "description": "PAYLOAD EPC M & R",
-    "total_k_connectors": 1,
+    "total_k_connectors": 2,
     "k_connector_list": [
-      "K1"
+      "K1",
+      "K2"
     ]
   }
 ]

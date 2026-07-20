@@ -22,5 +22,19 @@
       "part_number": null,
       "manufacturer": null
     }
+  },
+  {
+    "pkg_id": "P_EPC",
+    "conn_id": "K2",
+    "pcb_side": {
+      "part_number": "DBM25PNMBL-FR022_C115371-0230",
+      "manufacturer": null,
+      "positions": 25,
+      "gender": "Plug"
+    },
+    "mating_side": {
+      "part_number": null,
+      "manufacturer": null
+    }
   }
 ]
