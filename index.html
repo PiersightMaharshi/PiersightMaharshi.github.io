@@ -736,6 +736,7 @@
     async function ghGit(endpoint, options = {}) {
       const token = getToken();
       const res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}${endpoint}`, {
+        cache: 'no-store', // never serve the branch head / commit from the browser cache
         ...options,
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -782,34 +783,43 @@
         { path: 'data/test_results.json', data: state.tests }
       ];
 
-      const ref = await ghGit(`/git/ref/heads/${GH_BRANCH}`);
-      const baseCommitSha = ref.object.sha;
-      const baseCommit = await ghGit(`/git/commits/${baseCommitSha}`);
-
+      // Blobs are independent of the branch head, so build them once.
       const blobs = await Promise.all(files.map(f =>
         ghGit('/git/blobs', {
           method: 'POST',
           body: JSON.stringify({ content: JSON.stringify(f.data, null, 2), encoding: 'utf-8' })
         })
       ));
+      const treeSpec = files.map((f, i) => ({ path: f.path, mode: '100644', type: 'blob', sha: blobs[i].sha }));
 
-      const tree = await ghGit('/git/trees', {
-        method: 'POST',
-        body: JSON.stringify({
-          base_tree: baseCommit.tree.sha,
-          tree: files.map((f, i) => ({ path: f.path, mode: '100644', type: 'blob', sha: blobs[i].sha }))
-        })
-      });
-
-      const commit = await ghGit('/git/commits', {
-        method: 'POST',
-        body: JSON.stringify({ message, tree: tree.sha, parents: [baseCommitSha] })
-      });
-
-      await ghGit(`/git/refs/heads/${GH_BRANCH}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ sha: commit.sha })
-      });
+      // Retry against a freshly-read head if the branch moved under us
+      // (e.g. a git push from your local repo between read and write).
+      let lastErr;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const ref = await ghGit(`/git/ref/heads/${GH_BRANCH}`);
+          const baseCommitSha = ref.object.sha;
+          const baseCommit = await ghGit(`/git/commits/${baseCommitSha}`);
+          const tree = await ghGit('/git/trees', {
+            method: 'POST',
+            body: JSON.stringify({ base_tree: baseCommit.tree.sha, tree: treeSpec })
+          });
+          const commit = await ghGit('/git/commits', {
+            method: 'POST',
+            body: JSON.stringify({ message, tree: tree.sha, parents: [baseCommitSha] })
+          });
+          await ghGit(`/git/refs/heads/${GH_BRANCH}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ sha: commit.sha })
+          });
+          return;
+        } catch (err) {
+          lastErr = err;
+          if (!/not a fast forward|409|422/i.test(err.message)) throw err;
+          // otherwise loop: re-read the head and rebuild on top of it
+        }
+      }
+      throw lastErr;
     }
 
     // ---- Delete package ----
