@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "pkg_id": "WaveGuide_Coupler",
+    "pkg_name": "WaveGuide_Coupler",
+    "description": "",
+    "total_k_connectors": 1,
+    "k_connector_list": [
+      "WC_1"
+    ]
+  }
+]
